@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予約管理</title>
+<style>
+  :root {
+    --primary: #2563EB;
+    --primary-light: #3B82F6;
+    --primary-dark: #1D4ED8;
+    --accent: #EFF6FF;
+    --text: #111827;
+    --text-muted: #6B7280;
+    --bg: #F3F4F6;
+    --white: #FFFFFF;
+    --border: #E5E7EB;
+    --success: #059669;
+    --success-bg: #ECFDF5;
+    --warn: #D97706;
+    --warn-bg: #FFFBEB;
+    --danger: #DC2626;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    background: #1E293B;
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 10;
+  }
+  .sidebar-logo {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid #334155;
+  }
+  .sidebar-logo-text {
+    font-size: 15px; font-weight: 700; color: #F1F5F9;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sidebar-logo-sub { font-size: 11px; color: #94A3B8; margin-top: 3px; }
+
+  .sidebar-section { padding: 16px 12px 8px; }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; color: #64748B;
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 0 8px; margin-bottom: 4px;
+  }
+  .sidebar-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; color: #CBD5E1;
+    cursor: pointer; transition: all 0.15s;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .sidebar-nav-item:hover { background: #334155; color: #F1F5F9; }
+  .sidebar-nav-item.active { background: var(--primary); color: white; }
+  .sidebar-nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  .sidebar-today {
+    margin: 0 12px 12px;
+    background: #0F172A; border-radius: var(--radius-sm);
+    padding: 12px;
+  }
+  .sidebar-today-title {
+    font-size: 10px; font-weight: 700; color: #64748B;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .sidebar-today-count {
+    font-size: 28px; font-weight: 800; color: #F1F5F9; line-height: 1;
+    margin-bottom: 2px;
+  }
+  .sidebar-today-label { font-size: 11px; color: #94A3B8; }
+
+  .today-appt-list { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .today-appt-item {
+    background: #1E293B; border-radius: 4px; padding: 6px 8px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .today-appt-time { font-size: 11px; font-weight: 700; color: #38BDF8; width: 36px; flex-shrink: 0; }
+  .today-appt-name { font-size: 11px; color: #CBD5E1; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .today-appt-course {
+    font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
+    background: #334155; color: #94A3B8; flex-shrink: 0;
+  }
+
+  /* Main content */
+  .main-content {
+    margin-left: 260px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Topbar */
+  .topbar {
+    background: var(--white); border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .topbar-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar-date { font-size: 12px; color: var(--text-muted); }
+  .btn-add {
+    background: var(--primary); color: white;
+    border: none; border-radius: var(--radius-sm); padding: 7px 14px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 6px; transition: background 0.15s;
+  }
+  .btn-add:hover { background: var(--primary-dark); }
+
+  /* Page body */
+  .page-body { padding: 28px; flex: 1; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--white); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+  .stat-value { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Table */
+  .card {
+    background: var(--white); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { font-size: 14px; font-weight: 700; }
+  .card-actions { display: flex; gap: 8px; }
+  .btn-sm {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 5px 10px;
+    font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted);
+    font-family: inherit; transition: all 0.15s;
+  }
+  .btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-sm.active { background: var(--accent); border-color: var(--primary); color: var(--primary); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    color: var(--text-muted); padding: 10px 16px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-size: 13px; vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #FAFAFA; }
+
+  .badge-course {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .badge-30 { background: #E0F2FE; color: #0369A1; }
+  .badge-60 { background: #EDE9FE; color: #6D28D9; }
+  .badge-80 { background: #FEF3C7; color: #92400E; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+  }
+  .status-confirmed { background: var(--success-bg); color: var(--success); }
+  .status-pending   { background: var(--warn-bg);    color: var(--warn); }
+  .status-done      { background: var(--bg);          color: var(--text-muted); }
+
+  .reminder-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
+    background: #FEF3C7; color: #92400E;
+  }
+
+  .action-btn {
+    background: none; border: none; cursor: pointer; font-size: 13px;
+    color: var(--text-muted); padding: 3px 6px; border-radius: 4px; transition: all 0.15s;
+  }
+  .action-btn:hover { background: var(--bg); color: var(--text); }
+  .action-btn.danger:hover { background: #FEF2F2; color: var(--danger); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 48px 20px; color: var(--text-muted);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  /* Modal overlay */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 100;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--white); border-radius: 14px;
+    width: 100%; max-width: 520px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    max-height: 92vh; display: flex; flex-direction: column;
+  }
+  .modal-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-step-info { font-size: 12px; color: var(--text-muted); }
+  .modal-close {
+    width: 30px; height: 30px; border: none; background: var(--bg);
+    border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+
+  /* Progress in modal */
+  .modal-progress {
+    display: flex; padding: 14px 20px 0; gap: 6px; flex-shrink: 0;
+  }
+  .modal-prog-step {
+    flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background 0.3s;
+  }
+  .modal-prog-step.done,
+  .modal-prog-step.active { background: var(--primary); }
+
+  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .modal-footer {
+    padding: 14px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
+  }
+
+  /* Form elements */
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .form-label .req { color: var(--danger); margin-left: 3px; }
+  .form-control {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit; color: var(--text); background: var(--white);
+    transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  .form-control::placeholder { color: #D1D5DB; }
+  select.form-control { cursor: pointer; }
+
+  /* Course options */
+  .course-options { display: flex; flex-direction: column; gap: 8px; }
+  .course-opt {
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px 14px; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .course-opt:hover { border-color: var(--primary-light); background: var(--accent); }
+  .course-opt.selected { border-color: var(--primary); background: var(--accent); }
+  .course-opt-radio {
+    width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  }
+  .course-opt.selected .course-opt-radio { border-color: var(--primary); background: var(--primary); }
+  .course-opt.selected .course-opt-radio::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
+  .course-opt-info { flex: 1; }
+  .course-opt-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .course-opt-desc { font-size: 12px; color: var(--text-muted); }
+  .course-opt-badge {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+  }
+
+  /* Date row */
+  .date-time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Confirm summary */
+  .confirm-summary { display: flex; flex-direction: column; gap: 0; border: 1.5px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+  .confirm-row { display: flex; padding: 11px 14px; border-bottom: 1px solid var(--border); gap: 12px; }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-key { font-size: 12px; font-weight: 600; color: var(--text-muted); min-width: 80px; padding-top: 1px; }
+  .confirm-val { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+
+  .reminder-info {
+    background: var(--warn-bg); border: 1px solid #FDE68A;
+    border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 12px;
+    font-size: 12px; color: #78350F; line-height: 1.6;
+    display: flex; gap: 8px;
+  }
+  .reminder-info-icon { font-size: 14px; flex-shrink: 0; }
+
+  /* Action buttons */
+  .btn-modal {
+    padding: 9px 18px; border: none; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-modal-secondary { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-modal-secondary:hover { background: var(--border); }
+  .btn-modal-primary { background: var(--primary); color: white; }
+  .btn-modal-primary:hover { background: var(--primary-dark); }
+  .btn-modal-primary:disabled { background: var(--border); color: var(--text-muted); cursor: default; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1E293B; color: white;
+    padding: 12px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s ease; z-index: 200;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Import modal */
+  .import-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 32px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--bg); margin-bottom: 16px;
+  }
+  .import-zone:hover, .import-zone.drag { border-color: var(--primary); background: var(--accent); }
+  .import-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .import-zone-text { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .import-zone-sub { font-size: 12px; color: var(--text-muted); }
+  .import-file-input { display: none; }
+
+  .col-map-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+  .col-map-table th { text-align: left; padding: 6px 8px; background: var(--bg); font-size: 11px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .col-map-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .col-map-table select { font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; }
+  .col-map-table tr:last-child td { border-bottom: none; }
+
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 11px; overflow-x: auto; display: block; max-height: 140px; overflow-y: auto; }
+  .preview-table th { padding: 4px 8px; background: var(--bg); border: 1px solid var(--border); white-space: nowrap; font-weight: 600; color: var(--text-muted); }
+  .preview-table td { padding: 4px 8px; border: 1px solid var(--border); white-space: nowrap; color: var(--text); }
+
+  .import-result { background: var(--success-bg); border: 1px solid #A7F3D0; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--success); font-weight: 600; display: none; }
+  .import-error  { background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--danger); display: none; }
+
+  .section-label-small { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 220px; }
+    .main-content { margin-left: 220px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .sidebar { display: none; }
+    .main-content { margin-left: 0; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .page-body { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-text">🫧 整体サロン</div>
+    <div class="sidebar-logo-sub">予約管理システム</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">メニュー</div>
+    <button class="sidebar-nav-item active">
+      <span class="sidebar-nav-icon">🗓</span> 予約一覧
+    </button>
+    <button class="sidebar-nav-item">
+      <span class="sidebar-nav-icon">👥</span> 顧客一覧
+    </button>
+    <button class="sidebar-nav-item">
+      <span class="sidebar-nav-icon">📊</span> 統計
+    </button>
+    <button class="sidebar-nav-item">
+      <span class="sidebar-nav-icon">⚙️</span> 設定
+    </button>
+  </div>
+
+  <div style="margin-top:auto; padding-bottom:4px;">
+    <div class="sidebar-today">
+      <div class="sidebar-today-title">本日の予約</div>
+      <div class="sidebar-today-count" id="sidebarTodayCount">0</div>
+      <div class="sidebar-today-label">件</div>
+      <div class="today-appt-list" id="sidebarTodayList"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main-content">
+  <div class="topbar">
+    <div class="topbar-title">予約一覧</div>
+    <div class="topbar-right">
+      <div class="topbar-date" id="topbarDate"></div>
+      <button class="btn-sm" onclick="exportCSV()" title="CSVで書き出し">⬇ エクスポート</button>
+      <button class="btn-sm" onclick="openImport()" title="CSVを読み込む">⬆ インポート</button>
+      <button class="btn-add" onclick="openModal()">
+        ＋ 新規予約を登録
+      </button>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">本日の予約</div>
+        <div class="stat-value" id="statToday">0</div>
+        <div class="stat-sub">件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今週の予約</div>
+        <div class="stat-value" id="statWeek">0</div>
+        <div class="stat-sub">件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月の予約</div>
+        <div class="stat-value" id="statMonth">0</div>
+        <div class="stat-sub">件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">リマインド待ち</div>
+        <div class="stat-value" id="statReminder">0</div>
+        <div class="stat-sub">件</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">予約リスト</div>
+        <div class="card-actions">
+          <button class="btn-sm active" onclick="filterAppts('all', this)">すべて</button>
+          <button class="btn-sm" onclick="filterAppts('today', this)">本日</button>
+          <button class="btn-sm" onclick="filterAppts('upcoming', this)">今後</button>
+        </div>
+      </div>
+      <div id="tableWrap">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">予約がありません。「新規予約を登録」から追加してください。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">新規予約を登録</div>
+        <div class="modal-step-info" id="modalStepInfo">ステップ 1 / 4</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-progress">
+      <div class="modal-prog-step active" id="prog0"></div>
+      <div class="modal-prog-step" id="prog1"></div>
+      <div class="modal-prog-step" id="prog2"></div>
+      <div class="modal-prog-step" id="prog3"></div>
+    </div>
+
+    <div class="modal-body" id="modalBody"></div>
+
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" id="btnBack" onclick="stepBack()" style="display:none">← 戻る</button>
+      <button class="btn-modal btn-modal-primary" id="btnNext" onclick="stepNext()" disabled>次へ →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="importOverlay" onclick="closeImportOnOverlay(event)">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">CSVインポート</div>
+        <div class="modal-step-info">エルメのCSVエクスポートファイルを読み込みます</div>
+      </div>
+      <button class="modal-close" onclick="closeImport()">✕</button>
+    </div>
+    <div class="modal-body" id="importBody">
+      <!-- Step A: Upload -->
+      <div id="importStepA">
+        <div class="import-zone" id="importZone" onclick="document.getElementById('importFileInput').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleDrop(event)">
+          <div class="import-zone-icon">📂</div>
+          <div class="import-zone-text">クリックまたはドラッグでCSVを選択</div>
+          <div class="import-zone-sub">エルメの予約カレンダー → CSVエクスポート で取得したファイル</div>
+        </div>
+        <input type="file" id="importFileInput" class="import-file-input" accept=".csv,text/csv" onchange="handleFileSelect(event)">
+
+        <div class="section-label-small">エルメCSVの取得手順</div>
+        <ol style="font-size:12px;color:var(--text-muted);line-height:2;padding-left:18px">
+          <li>エルメ管理画面 → 予約管理 → サロン・面談予約</li>
+          <li>予約カレンダー画面を開く</li>
+          <li>右上の「CSVエクスポート」ボタンをクリック</li>
+          <li>ダウンロードされたファイルをここにドロップ</li>
+        </ol>
+      </div>
+
+      <!-- Step B: Column mapping -->
+      <div id="importStepB" style="display:none">
+        <div class="section-label-small" style="margin-bottom:6px">プレビュー（先頭3件）</div>
+        <div id="previewWrap" style="overflow-x:auto;margin-bottom:16px"></div>
+
+        <div class="section-label-small">列のマッピング</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">CSVの列名と当システムの項目を対応付けてください</p>
+        <table class="col-map-table">
+          <thead><tr><th>当システムの項目</th><th>CSVの列</th><th>必須</th></tr></thead>
+          <tbody>
+            <tr><td>予約日</td><td><select id="mapDate" onchange="checkImportReady()"></select></td><td>✱</td></tr>
+            <tr><td>予約時間</td><td><select id="mapTime" onchange="checkImportReady()"></select></td><td>✱</td></tr>
+            <tr><td>LINE名（顧客名）</td><td><select id="mapName" onchange="checkImportReady()"></select></td><td>✱</td></tr>
+            <tr><td>コース（分数）</td><td><select id="mapCourse" onchange="checkImportReady()"></select></td><td></td></tr>
+            <tr><td>メモ・症状</td><td><select id="mapMemo"></select></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <div class="import-result" id="importResult"></div>
+        <div class="import-error"  id="importError"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" onclick="closeImport()">キャンセル</button>
+      <button class="btn-modal btn-modal-primary" id="btnDoImport" style="display:none" onclick="doImport()">インポート実行</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✓ 予約を登録しました</div>
+
+<script>
+// -------------------------------------------------------
+// Data
+// -------------------------------------------------------
+const COURSES = [
+  { id:0, name:'30分メンテナンス', dur:30, badgeClass:'badge-30' },
+  { id:1, name:'60分通常',         dur:60, badgeClass:'badge-60' },
+  { id:2, name:'80分新規',         dur:80, badgeClass:'badge-80' },
+];
+
+let appointments = [];
+let currentStep = 0;
+let draft = { course:null, date:'', time:'', lineName:'', memo:'' };
+let currentFilter = 'all';
+
+// -------------------------------------------------------
+// Init
+// -------------------------------------------------------
+async function init() {
+  document.getElementById('tableWrap').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">データを読み込んでいます...</div></div>';
+  const now = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('topbarDate').textContent =
+    now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日（' + days[now.getDay()] + '）';
+  await loadData();
+  renderTable();
+  updateStats();
+}
+
+// -------------------------------------------------------
+// Modal
+// -------------------------------------------------------
+function openModal() {
+  draft = { course:null, date:'', time:'', lineName:'', memo:'' };
+  currentStep = 0;
+  document.getElementById('modalOverlay').classList.add('open');
+  renderStep();
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+function closeOnOverlay(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function renderStep() {
+  updateProgress();
+  document.getElementById('modalStepInfo').textContent = 'ステップ ' + (currentStep+1) + ' / 4';
+  document.getElementById('btnBack').style.display = currentStep > 0 ? '' : 'none';
+  const btnNext = document.getElementById('btnNext');
+  btnNext.textContent = currentStep === 3 ? '登録する' : '次へ →';
+  btnNext.disabled = !canProceed();
+
+  const body = document.getElementById('modalBody');
+  const titles = ['コースを選択','日時を入力','顧客情報','確認'];
+  document.getElementById('modalTitle').textContent = titles[currentStep];
+
+  if (currentStep === 0) body.innerHTML = renderStep0();
+  else if (currentStep === 1) body.innerHTML = renderStep1();
+  else if (currentStep === 2) body.innerHTML = renderStep2();
+  else body.innerHTML = renderStep3();
+
+  // Bind events
+  if (currentStep === 0) {
+    document.querySelectorAll('.course-opt').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.course-opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        draft.course = parseInt(el.dataset.course);
+        checkNext();
+      });
+    });
+  }
+  if (currentStep === 1) {
+    document.getElementById('inputDate').addEventListener('change', e => { draft.date = e.target.value; draft.time = ''; renderTimeOptions(); checkNext(); });
+    document.getElementById('inputDate').value = draft.date;
+    if (draft.date) renderTimeOptions();
+  }
+  if (currentStep === 2) {
+    document.getElementById('inputLineName').addEventListener('input', e => { draft.lineName = e.target.value; checkNext(); });
+    document.getElementById('inputLineName').value = draft.lineName;
+    document.getElementById('inputMemo').addEventListener('input', e => { draft.memo = e.target.value; });
+    document.getElementById('inputMemo').value = draft.memo;
+    document.getElementById('inputLineName').focus();
+  }
+}
+
+function renderStep0() {
+  return `<div class="course-options">
+    ${COURSES.map(c => `
+      <div class="course-opt${draft.course === c.id ? ' selected' : ''}" data-course="${c.id}">
+        <div class="course-opt-radio"></div>
+        <div class="course-opt-info">
+          <div class="course-opt-name">${c.name}</div>
+          <div class="course-opt-desc">${c.id===0?'定期通院・部分調整向け':c.id===1?'全身バランス調整のスタンダードコース':'初回のお客様向け・問診含む'}</div>
+        </div>
+        <span class="course-opt-badge ${c.badgeClass}">${c.dur}分</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderStep1() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return `
+    <div class="date-time-row">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">日付<span class="req">*</span></label>
+        <input type="date" class="form-control" id="inputDate" min="${todayStr}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">時間<span class="req">*</span></label>
+        <select class="form-control" id="inputTime" onchange="draft.time=this.value; checkNext()">
+          <option value="">日付を選択してください</option>
+        </select>
+      </div>
+    </div>`;
+}
+
+function renderTimeOptions() {
+  const sel = document.getElementById('inputTime');
+  if (!sel) return;
+  // 10:00〜18:30を10分刻み
+  const slots = [];
+  for (let h = 10; h <= 18; h++) {
+    for (let m = 0; m < 60; m += 10) {
+      if (h === 18 && m > 30) break;
+      slots.push(pad(h) + ':' + pad(m));
+    }
+  }
+  // ダミー満枠
+  const full = new Set(['10:30','11:10','12:00','13:20','14:40','16:00']);
+  sel.innerHTML = '<option value="">時間を選択</option>' +
+    slots.map(t => `<option value="${t}"${full.has(t) ? ' disabled' : ''}${draft.time===t?' selected':''}>${t}${full.has(t)?'（満）':''}</option>`).join('');
+}
+
+function renderStep2() {
+  return `
+    <div class="form-group">
+      <label class="form-label">LINE名<span class="req">*</span></label>
+      <input type="text" class="form-control" id="inputLineName" placeholder="例：田中 はなこ">
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">症状・メモ</label>
+      <textarea class="form-control" id="inputMemo" rows="3"
+        placeholder="例：肩こり・腰痛など" style="resize:none;line-height:1.6"></textarea>
+    </div>`;
+}
+
+function renderStep3() {
+  const c = COURSES[draft.course];
+  const rDate = reminderDate(draft.date);
+  const memo = draft.memo.trim();
+  return `
+    <div class="confirm-summary">
+      <div class="confirm-row">
+        <div class="confirm-key">コース</div>
+        <div class="confirm-val"><span class="badge-course ${c.badgeClass}">${c.name}</span></div>
+      </div>
+      <div class="confirm-row">
+        <div class="confirm-key">日時</div>
+        <div class="confirm-val">${draft.date.replace(/-/g,'/')} ${draft.time}〜</div>
+      </div>
+      <div class="confirm-row">
+        <div class="confirm-key">LINE名</div>
+        <div class="confirm-val">${esc(draft.lineName)}</div>
+      </div>
+      ${memo ? `<div class="confirm-row">
+        <div class="confirm-key">メモ</div>
+        <div class="confirm-val" style="white-space:pre-wrap">${esc(memo)}</div>
+      </div>` : ''}
+    </div>
+    <div class="reminder-info">
+      <span class="reminder-info-icon">🔔</span>
+      <div>リマインドを <strong>${rDate} 12:00</strong> にLINEで自動送信します。</div>
+    </div>`;
+}
+
+function updateProgress() {
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('prog' + i);
+    el.classList.remove('done', 'active');
+    if (i < currentStep) el.classList.add('done');
+    else if (i === currentStep) el.classList.add('active');
+  }
+}
+
+function canProceed() {
+  switch (currentStep) {
+    case 0: return draft.course !== null;
+    case 1: return draft.date !== '' && draft.time !== '';
+    case 2: return draft.lineName.trim() !== '';
+    case 3: return true;
+  }
+  return false;
+}
+function checkNext() {
+  document.getElementById('btnNext').disabled = !canProceed();
+}
+
+function stepNext() {
+  if (currentStep === 1) {
+    const sel = document.getElementById('inputTime');
+    if (sel) draft.time = sel.value;
+  }
+  if (currentStep === 3) { registerAppointment(); return; }
+  currentStep++;
+  renderStep();
+}
+function stepBack() {
+  if (currentStep > 0) { currentStep--; renderStep(); }
+}
+
+function registerAppointment() {
+  const c = COURSES[draft.course];
+  const num = 'A' + String(Math.floor(Math.random()*90000+10000));
+  const appt = {
+    id: num,
+    course: draft.course,
+    date: draft.date,
+    time: draft.time,
+    lineName: draft.lineName,
+    memo: draft.memo,
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+    reminderDate: reminderDate(draft.date),
+  };
+  sbInsert(toDB(appt)).then(() => {
+    appointments.unshift(appt);
+    closeModal();
+    renderTable();
+    updateStats();
+    showToast('✓ ' + draft.lineName + ' 様の予約を登録しました');
+  }).catch(e => { showToast('⚠ 登録に失敗しました: ' + e.message); });
+}
+
+// -------------------------------------------------------
+// Table
+// -------------------------------------------------------
+function filterAppts(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.btn-sm').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function renderTable() {
+  const today = new Date().toISOString().slice(0,10);
+  let list = [...appointments];
+  if (currentFilter === 'today') list = list.filter(a => a.date === today);
+  if (currentFilter === 'upcoming') list = list.filter(a => a.date >= today);
+
+  const wrap = document.getElementById('tableWrap');
+  if (list.length === 0) {
+    wrap.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-text">予約がありません。「新規予約を登録」から追加してください。</div>
+    </div>`;
+    return;
+  }
+
+  const rows = list.map(a => {
+    const c = COURSES[a.course];
+    const isToday = a.date === today;
+    const reminderSent = a.reminderDate < today;
+    return `<tr>
+      <td style="font-weight:600">${a.id}</td>
+      <td>${a.date.replace(/-/g,'/')} <span style="color:var(--text-muted)">${a.time}</span></td>
+      <td>${esc(a.lineName)}</td>
+      <td><span class="badge-course ${c.badgeClass}">${c.name}</span></td>
+      <td>
+        ${isToday
+          ? '<span class="status-badge status-confirmed">● 本日</span>'
+          : a.date < today
+            ? '<span class="status-badge status-done">完了</span>'
+            : '<span class="status-badge status-pending">● 予定</span>'}
+      </td>
+      <td>
+        ${reminderSent
+          ? '<span style="font-size:11px;color:var(--text-muted)">送信済</span>'
+          : `<span class="reminder-tag">🔔 ${a.reminderDate} 12:00</span>`}
+      </td>
+      <td style="white-space:nowrap">
+        <button class="action-btn" onclick="editAppt('${a.id}')" title="編集">✏️</button>
+        <button class="action-btn danger" onclick="deleteAppt('${a.id}')" title="削除">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>予約番号</th><th>日時</th><th>LINE名</th><th>コース</th><th>ステータス</th><th>リマインド</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+
+  updateSidebar();
+}
+
+function deleteAppt(id) {
+  if (!confirm('この予約を削除しますか？')) return;
+  sbDelete(id).then(() => {
+    appointments = appointments.filter(a => a.id !== id);
+    renderTable();
+    updateStats();
+    showToast('🗑 予約を削除しました');
+  }).catch(e => { showToast('⚠ 削除に失敗しました: ' + e.message); });
+}
+
+function editAppt(id) {
+  const a = appointments.find(x => x.id === id);
+  if (!a) return;
+  draft = { course:a.course, date:a.date, time:a.time, lineName:a.lineName, memo:a.memo };
+  currentStep = 0;
+  // Simple: open modal in edit mode (re-register as new for simplicity)
+  document.getElementById('modalOverlay').classList.add('open');
+  renderStep();
+}
+
+// -------------------------------------------------------
+// Stats + Sidebar
+// -------------------------------------------------------
+function updateStats() {
+  const today = new Date().toISOString().slice(0,10);
+  const startOfWeek = (() => {
+    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0,10);
+  })();
+  const startOfMonth = today.slice(0,8) + '01';
+
+  document.getElementById('statToday').textContent   = appointments.filter(a => a.date === today).length;
+  document.getElementById('statWeek').textContent    = appointments.filter(a => a.date >= startOfWeek).length;
+  document.getElementById('statMonth').textContent   = appointments.filter(a => a.date >= startOfMonth).length;
+  document.getElementById('statReminder').textContent = appointments.filter(a => a.reminderDate >= today && a.date >= today).length;
+  updateSidebar();
+}
+
+function updateSidebar() {
+  const today = new Date().toISOString().slice(0,10);
+  const todayAppts = appointments.filter(a => a.date === today).sort((a,b) => a.time.localeCompare(b.time));
+  document.getElementById('sidebarTodayCount').textContent = todayAppts.length;
+
+  const list = document.getElementById('sidebarTodayList');
+  if (todayAppts.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = todayAppts.slice(0,5).map(a => {
+    const c = COURSES[a.course];
+    return `<div class="today-appt-item">
+      <span class="today-appt-time">${a.time}</span>
+      <span class="today-appt-name">${esc(a.lineName)}</span>
+      <span class="today-appt-course">${c.dur}分</span>
+    </div>`;
+  }).join('');
+}
+
+// -------------------------------------------------------
+// Helpers
+// -------------------------------------------------------
+function reminderDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d-3);
+  return dt.getFullYear() + '-' + pad(dt.getMonth()+1) + '-' + pad(dt.getDate());
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// -------------------------------------------------------
+// Supabase
+// -------------------------------------------------------
+const SB_URL = 'https://dairdpprexfmvilnhecq.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhaXJkcHByZXhmbXZpbG5oZWNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MTQzNzQsImV4cCI6MjA5MzE5MDM3NH0.sijauBJgcqLL4lrJxM34fyMvq80W170iOs7i9XtbcJI';
+
+const SB_HEADERS = {
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Content-Type': 'application/json',
+};
+
+async function sbGet() {
+  const res = await fetch(SB_URL + '/rest/v1/appointments?select=*&order=date.asc,time.asc', { headers: SB_HEADERS });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function sbInsert(row) {
+  const res = await fetch(SB_URL + '/rest/v1/appointments', {
+    method: 'POST',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+async function sbBatchInsert(rows) {
+  const res = await fetch(SB_URL + '/rest/v1/appointments', {
+    method: 'POST',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+async function sbDelete(id) {
+  const res = await fetch(SB_URL + '/rest/v1/appointments?id=eq.' + encodeURIComponent(id), {
+    method: 'DELETE', headers: SB_HEADERS,
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+function toDB(a) {
+  return { id: a.id, course: a.course, date: a.date, time: a.time, line_name: a.lineName, memo: a.memo || '', reminder_date: a.reminderDate };
+}
+function fromDB(r) {
+  return { id: r.id, course: r.course, date: r.date, time: r.time, lineName: r.line_name, memo: r.memo || '', reminderDate: r.reminder_date, createdAt: r.created_at };
+}
+
+async function loadData() {
+  try {
+    const rows = await sbGet();
+    appointments = rows.map(fromDB);
+  } catch(e) {
+    console.error('Supabase load error:', e);
+    appointments = [];
+  }
+}
+function saveData() { /* Supabase使用のため不要 */ }
+
+// -------------------------------------------------------
+// CSV エクスポート
+// -------------------------------------------------------
+function exportCSV() {
+  if (appointments.length === 0) { showToast('⚠ エクスポートする予約がありません'); return; }
+  const header = ['予約番号','予約日','予約時間','LINE名','コース','所要時間(分)','メモ','リマインド日'];
+  const rows = appointments.map(a => {
+    const c = COURSES[a.course] || { name:'', dur:'' };
+    return [a.id, a.date, a.time, a.lineName, c.name, c.dur, a.memo || '', a.reminderDate || ''];
+  });
+  const csv = [header, ...rows].map(r =>
+    r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')
+  ).join('\n');
+  const bom = '﻿';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '予約データ_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('⬇ CSVをエクスポートしました');
+}
+
+// -------------------------------------------------------
+// CSV インポート
+// -------------------------------------------------------
+let parsedCSV = { headers: [], rows: [], isLME: false };
+
+function openImport() {
+  document.getElementById('importOverlay').classList.add('open');
+  resetImport();
+}
+function closeImport() { document.getElementById('importOverlay').classList.remove('open'); }
+function closeImportOnOverlay(e) { if (e.target === document.getElementById('importOverlay')) closeImport(); }
+
+function resetImport() {
+  parsedCSV = { headers: [], rows: [], isLME: false };
+  document.getElementById('importStepA').style.display = '';
+  document.getElementById('importStepB').style.display = 'none';
+  document.getElementById('btnDoImport').style.display = 'none';
+  document.getElementById('importFileInput').value = '';
+  document.getElementById('importResult').style.display = 'none';
+  document.getElementById('importError').style.display = 'none';
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('importZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) readCSVFile(file);
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) readCSVFile(file);
+}
+
+function readCSVFile(file) {
+  if (!file.name.match(/\.csv$/i)) {
+    showImportError('CSVファイルを選択してください（.csv）');
+    return;
+  }
+  const reader = new FileReader();
+  // LMEはShift-JISの場合があるのでUTF-8で試みてダメならShift-JISで再試行
+  reader.onload = e => {
+    let text = e.target.result;
+    text = text.replace(/^﻿/, ''); // BOM除去
+    parseCSV(text, file);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// LMEフォーマット判定
+function detectLME(headers) {
+  return headers.some(h => h.includes('タイムスタンプ') || h.includes('お客様名（LINE名）'));
+}
+
+// LMEの列インデックス（固定）
+const LME_COL = {
+  date:    2,  // 予約（来店）日
+  start:   3,  // 予約開始時間
+  end:     4,  // 予約終了時間
+  status:  5,  // ステータス
+  lineName:6,  // お客様名（LINE名）
+};
+
+function parseCSV(text, file) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) { showImportError('データが見つかりません'); return; }
+
+  const headers = splitCSVLine(lines[0]);
+  const rows    = lines.slice(1).filter(l => l.trim()).map(splitCSVLine);
+  const isLME   = detectLME(headers);
+
+  parsedCSV = { headers, rows, isLME };
+
+  document.getElementById('importStepA').style.display = 'none';
+  document.getElementById('importStepB').style.display = '';
+
+  if (isLME) {
+    showLMEPreview(rows);
+  } else {
+    showGenericMapping(headers, rows);
+  }
+}
+
+// ---- LME専用プレビュー ----
+function showLMEPreview(rows) {
+  const confirmed = rows.filter(r => (r[LME_COL.status] || '').includes('予約確定'));
+  const cancelled = rows.filter(r => (r[LME_COL.status] || '').includes('キャンセル'));
+
+  const preview3 = confirmed.slice(0, 3);
+  const previewHTML = preview3.length ? `
+    <table class="preview-table">
+      <thead><tr><th>予約日</th><th>開始</th><th>LINE名</th><th>判定コース</th></tr></thead>
+      <tbody>${preview3.map(r => {
+        const dur = calcDuration(r[LME_COL.start], r[LME_COL.end]);
+        return `<tr>
+          <td>${esc(r[LME_COL.date])}</td>
+          <td>${esc(r[LME_COL.start])}</td>
+          <td>${esc(r[LME_COL.lineName])}</td>
+          <td>${COURSES[durToCourse(dur)].name}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : '<p style="color:var(--text-muted);font-size:13px">予約確定のデータが見つかりませんでした</p>';
+
+  document.getElementById('importStepB').innerHTML = `
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:18px">✅</span>
+      <div style="font-size:13px;color:#1D4ED8;line-height:1.6">
+        <strong>エルメ形式を検出しました</strong><br>
+        予約確定：<strong>${confirmed.length}件</strong>　キャンセル：${cancelled.length}件（自動除外）
+      </div>
+    </div>
+    <div class="section-label-small">インポートされる予約（先頭3件）</div>
+    <div style="overflow-x:auto;margin-bottom:14px">${previewHTML}</div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      ※ 所要時間から自動でコースを判定します（30分→メンテナンス、60分→通常、80分→新規）<br>
+      ※ キャンセル済みの予約は取り込まれません
+    </p>
+    <div class="import-result" id="importResult"></div>
+    <div class="import-error"  id="importError"></div>
+  `;
+  document.getElementById('btnDoImport').style.display = confirmed.length > 0 ? '' : 'none';
+}
+
+// ---- 汎用マッピングUI ----
+function showGenericMapping(headers, rows) {
+  const preview3 = rows.slice(0, 3);
+  const previewHTML = `<table class="preview-table">
+    <thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${preview3.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table>`;
+
+  document.getElementById('importStepB').innerHTML = `
+    <div class="section-label-small" style="margin-bottom:6px">プレビュー（先頭3件）</div>
+    <div id="previewWrap" style="overflow-x:auto;margin-bottom:16px">${previewHTML}</div>
+    <div class="section-label-small">列のマッピング</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">CSVの列名と当システムの項目を対応付けてください</p>
+    <table class="col-map-table">
+      <thead><tr><th>当システムの項目</th><th>CSVの列</th><th>必須</th></tr></thead>
+      <tbody>
+        <tr><td>予約日</td><td><select id="mapDate" onchange="checkImportReady()"></select></td><td>✱</td></tr>
+        <tr><td>予約時間</td><td><select id="mapTime" onchange="checkImportReady()"></select></td><td>✱</td></tr>
+        <tr><td>LINE名（顧客名）</td><td><select id="mapName" onchange="checkImportReady()"></select></td><td>✱</td></tr>
+        <tr><td>コース</td><td><select id="mapCourse"></select></td><td></td></tr>
+        <tr><td>メモ・症状</td><td><select id="mapMemo"></select></td><td></td></tr>
+      </tbody>
+    </table>
+    <div class="import-result" id="importResult"></div>
+    <div class="import-error"  id="importError"></div>
+  `;
+
+  const opts = '<option value="">（使用しない）</option>' +
+    headers.map((h, i) => `<option value="${i}">${esc(h)}</option>`).join('');
+  ['mapDate','mapTime','mapName','mapCourse','mapMemo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
+
+  const guess = (kws) => {
+    const idx = headers.findIndex(h => kws.some(k => h.includes(k)));
+    return idx >= 0 ? String(idx) : '';
+  };
+  document.getElementById('mapDate').value   = guess(['日付','予約日','date','Date']);
+  document.getElementById('mapTime').value   = guess(['時間','時刻','time','Time']);
+  document.getElementById('mapName').value   = guess(['名前','氏名','顧客','お客','LINE','name','Name']);
+  document.getElementById('mapCourse').value = guess(['コース','メニュー','course','施術']);
+  document.getElementById('mapMemo').value   = guess(['メモ','備考','症状','要望','note']);
+  checkImportReady();
+}
+
+function splitCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function checkImportReady() {
+  const d = document.getElementById('mapDate')?.value;
+  const t = document.getElementById('mapTime')?.value;
+  const n = document.getElementById('mapName')?.value;
+  const ok = d && t && n;
+  document.getElementById('btnDoImport').style.display = ok ? '' : 'none';
+}
+
+// 時間差（分）を計算
+function calcDuration(start, end) {
+  const [sh, sm] = (start || '').split(':').map(Number);
+  const [eh, em] = (end   || '').split(':').map(Number);
+  if (isNaN(sh) || isNaN(eh)) return 60;
+  return (eh * 60 + em) - (sh * 60 + sm);
+}
+// 分数→コースID
+function durToCourse(min) {
+  if (min <= 45) return 0;   // 30分メンテナンス
+  if (min <= 70) return 1;   // 60分通常
+  return 2;                  // 80分新規
+}
+
+// インポート実行（LME / 汎用 自動振り分け）
+function doImport() {
+  if (parsedCSV.isLME) { doLMEImport(); return; }
+  doGenericImport();
+}
+
+function doLMEImport() {
+  const resultEl = document.getElementById('importResult');
+  const errEl    = document.getElementById('importError');
+  if (resultEl) resultEl.style.display = 'none';
+  if (errEl)    errEl.style.display    = 'none';
+
+  const newAppts = []; let skipped = 0;
+
+  for (const row of parsedCSV.rows) {
+    if ((row[LME_COL.status] || '').includes('キャンセル')) { skipped++; continue; }
+    const dateStr = normalizeDate(row[LME_COL.date]     || '');
+    const timeStr = normalizeTime(row[LME_COL.start]    || '');
+    const rawName = (row[LME_COL.lineName] || '').trim();
+    if (!dateStr || !timeStr || !rawName) { skipped++; continue; }
+    const dur = calcDuration(row[LME_COL.start], row[LME_COL.end]);
+    newAppts.push({
+      id: 'A' + String(Math.floor(Math.random()*90000+10000)),
+      course: durToCourse(dur), date: dateStr, time: timeStr,
+      lineName: rawName, memo: '', reminderDate: reminderDate(dateStr),
+    });
+  }
+  finishImport(newAppts, skipped);
+}
+
+function doGenericImport() {
+  const iDate   = parseInt(document.getElementById('mapDate').value);
+  const iTime   = parseInt(document.getElementById('mapTime').value);
+  const iName   = parseInt(document.getElementById('mapName').value);
+  const iCourse = document.getElementById('mapCourse').value !== '' ? parseInt(document.getElementById('mapCourse').value) : -1;
+  const iMemo   = document.getElementById('mapMemo').value   !== '' ? parseInt(document.getElementById('mapMemo').value)   : -1;
+
+  const newAppts = []; let skipped = 0;
+  for (const row of parsedCSV.rows) {
+    const dateStr = normalizeDate(row[iDate] || '');
+    const timeStr = normalizeTime(row[iTime] || '');
+    const rawName = (row[iName] || '').trim();
+    if (!dateStr || !timeStr || !rawName) { skipped++; continue; }
+    let courseId = 1;
+    if (iCourse >= 0) {
+      const raw = row[iCourse] || '';
+      if (raw.includes('30') || raw.includes('メンテ')) courseId = 0;
+      else if (raw.includes('80') || raw.includes('新規')) courseId = 2;
+    }
+    newAppts.push({
+      id: 'A' + String(Math.floor(Math.random()*90000+10000)),
+      course: courseId, date: dateStr, time: timeStr,
+      lineName: rawName, memo: iMemo >= 0 ? (row[iMemo] || '') : '',
+      reminderDate: reminderDate(dateStr),
+    });
+  }
+  finishImport(newAppts, skipped);
+}
+
+async function finishImport(newAppts, skipped) {
+  if (newAppts.length === 0) {
+    showImportError(`取り込めるデータがありませんでした（スキップ: ${skipped}件）`);
+    return;
+  }
+  const btnDo = document.getElementById('btnDoImport');
+  if (btnDo) { btnDo.disabled = true; btnDo.textContent = '登録中…'; }
+  try {
+    await sbBatchInsert(newAppts.map(toDB));
+    appointments = [...newAppts, ...appointments];
+    renderTable(); updateStats();
+    const resultEl = document.getElementById('importResult');
+    if (resultEl) {
+      resultEl.textContent = `✓ ${newAppts.length}件をインポートしました${skipped > 0 ? `（除外: ${skipped}件）` : ''}`;
+      resultEl.style.display = '';
+    }
+    setTimeout(() => { closeImport(); showToast(`✓ ${newAppts.length}件をインポートしました`); }, 1400);
+  } catch(e) {
+    showImportError('Supabaseへの保存に失敗しました: ' + e.message);
+    if (btnDo) { btnDo.disabled = false; btnDo.textContent = 'インポート実行'; }
+  }
+}
+
+function normalizeDate(str) {
+  // 2025.03.11（火） / 2025/03/11 / 2025-03-11 / 2025年3月11日 に対応
+  str = str.trim()
+    .replace(/（.+?）/g, '')   // （火）など除去
+    .replace(/[./]/g, '-')
+    .replace(/年/, '-').replace(/月/, '-').replace(/日/, '');
+  const m = str.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return '';
+  return m[1] + '-' + pad(parseInt(m[2])) + '-' + pad(parseInt(m[3]));
+}
+
+function normalizeTime(str) {
+  str = (str || '').trim().replace(/：/, ':');
+  const m = str.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return '';
+  return pad(parseInt(m[1])) + ':' + m[2];
+}
+
+function showImportError(msg) {
+  const el = document.getElementById('importError');
+  if (el) { el.textContent = '⚠ ' + msg; el.style.display = ''; }
+}
+
+init();
+</script>
+</body>
+</html>
